@@ -1,91 +1,63 @@
-import 'dart:convert';
+// File: lib/services/api_service.dart
+
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cricket_simuletion/core/constants/api_constants.dart';
 
+final apiServiceProvider = Provider((ref) => ApiService());
+
 class ApiService {
-  Future<Map<String, String>> _headers() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
+  late final Dio _dio;
 
-    return {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
-    };
+  ApiService() {
+    _dio = Dio(
+      BaseOptions(
+        baseUrl: ApiConstants.baseUrl,
+        connectTimeout: const Duration(seconds: 15),
+        receiveTimeout: const Duration(seconds: 15),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      ),
+    );
+
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) async {
+          final prefs = await SharedPreferences.getInstance();
+          final token = prefs.getString('token');
+          if (token != null) options.headers['Authorization'] = 'Bearer $token';
+          return handler.next(options);
+        },
+      ),
+    );
   }
 
-  Future<dynamic> getRequest(String endpoint, {Map<String, String>? queryParams}) async {
-    var uri = Uri.parse('${ApiConstants.baseUrl}$endpoint');
-    if (queryParams != null) {
-      uri = uri.replace(queryParameters: queryParams);
-    }
-
-    if (kDebugMode) {
-      print('DEBUG: GET Request to $uri');
-    }
-
+  Future<dynamic> get(String path, {Map<String, dynamic>? params}) async {
     try {
-      final response = await http.get(uri, headers: await _headers());
-      return _processResponse(response);
-    } catch (e) {
-      if (kDebugMode) {
-        print('DEBUG: GET Request failed: $e');
-      }
-      rethrow;
-    }
-  }
-
-  Future<dynamic> postRequest(String endpoint, Map<String, dynamic> body) async {
-    final uri = Uri.parse('${ApiConstants.baseUrl}$endpoint');
-    
-    if (kDebugMode) {
-      print('DEBUG: POST Request to $uri');
-      print('DEBUG: Body: ${jsonEncode(body)}');
-    }
-
-    try {
-      final response = await http.post(
-        uri,
-        headers: await _headers(),
-        body: jsonEncode(body),
-      );
-      return _processResponse(response);
-    } catch (e) {
-      if (kDebugMode) {
-        print('DEBUG: POST Request failed: $e');
-      }
-      rethrow;
+      final response = await _dio.get(path, queryParameters: params);
+      return response.data;
+    } on DioException catch (e) {
+      throw _handleError(e);
     }
   }
 
-  dynamic _processResponse(http.Response response) {
-    if (kDebugMode) {
-      print('DEBUG: Response Status: ${response.statusCode}');
-      print('DEBUG: Response Body: ${response.body}');
-    }
-
-    if (response.body.isEmpty) {
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        return {'success': true, 'data': null};
-      }
-      throw Exception('Empty response with status ${response.statusCode}');
-    }
-
-    dynamic body;
+  Future<dynamic> post(String path, dynamic data) async {
     try {
-      body = jsonDecode(response.body);
-    } catch (e) {
-      throw Exception('Failed to parse JSON: ${response.body.substring(0, response.body.length > 100 ? 100 : response.body.length)}');
+      final response = await _dio.post(path, data: data);
+      return response.data;
+    } on DioException catch (e) {
+      throw _handleError(e);
     }
+  }
 
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      return body;
-    } else {
-      // Handle standard error format or direct message
-      final message = body is Map ? (body['message'] ?? body['error'] ?? 'Unknown Error') : body.toString();
-      throw Exception(message);
+  String _handleError(DioException e) {
+    if (e.response?.data != null && e.response?.data is Map) {
+      return e.response?.data['message'] ?? "Server Error";
     }
+    return e.message ?? "Connection Error";
   }
 }

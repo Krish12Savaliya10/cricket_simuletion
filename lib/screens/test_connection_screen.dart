@@ -1,3 +1,5 @@
+// File: lib/screens/test_connection_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:cricket_simuletion/services/api_service.dart';
 import 'package:cricket_simuletion/core/constants/api_constants.dart';
@@ -19,15 +21,15 @@ class _TestConnectionScreenState extends State<TestConnectionScreen> {
     
     try {
       final api = ApiService();
-      // Using the constant instead of hardcoded string
-      final response = await api.getRequest(ApiConstants.teams);
+      // Using the upgraded 'get' method instead of the old 'getRequest'
+      final response = await api.get(ApiConstants.teams);
 
       setState(() {
         result = "SUCCESS!\n\nResponse:\n$response";
       });
     } catch (e) {
       setState(() {
-        result = "ERROR: $e\n\nTips:\n1. Ensure Spring Boot is running in IntelliJ.\n2. Fix JDBC connection in application.properties.\n3. Enable CORS in Spring Boot for Web.";
+        result = "ERROR: $e\n\nTips:\n1. Ensure Spring Boot is running in IntelliJ.\n2. Fix JDBC connection (Port 8889) in application.properties.\n3. Enable CORS (@CrossOrigin) in Spring Boot.";
       });
     }
   }

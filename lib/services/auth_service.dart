@@ -1,3 +1,5 @@
+// File: lib/services/auth_service.dart
+
 import 'package:cricket_simuletion/core/constants/api_constants.dart';
 import 'package:cricket_simuletion/models/api_response.dart';
 import 'package:cricket_simuletion/models/user.dart';
@@ -14,7 +16,7 @@ class AuthService {
     required String role,
   }) async {
     try {
-      final response = await _apiService.postRequest(ApiConstants.signup, {
+      final response = await _apiService.post(ApiConstants.signup, {
         'fullName': fullName,
         'email': email,
         'password': password,
@@ -40,7 +42,7 @@ class AuthService {
     required String password,
   }) async {
     try {
-      final response = await _apiService.postRequest(ApiConstants.login, {
+      final response = await _apiService.post(ApiConstants.login, {
         'email': email,
         'password': password,
       });

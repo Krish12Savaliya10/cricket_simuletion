@@ -1,3 +1,5 @@
+// File: lib/services/audience_service.dart
+
 import 'package:cricket_simuletion/core/constants/api_constants.dart';
 import 'package:cricket_simuletion/models/api_response.dart';
 import 'package:cricket_simuletion/models/match_model.dart';
@@ -11,12 +13,16 @@ class AudienceService {
     required String type,
   }) async {
     try {
-      // The constant name was changed to 'matches' for general and 'audienceDashboard' for dashboard
-      // According to your last endpoint list, audience has a unified dashboard
-      final response = await _apiService.getRequest(
-        ApiConstants.matches, // Updated to use the correct constant
-        queryParams: {'status': status, 'type': type},
+      final response = await _apiService.get(
+        ApiConstants.matches,
+        params: {'status': status, 'type': type},
       );
+
+      // Handle the different response formats (List vs Map with data field)
+      if (response is List) {
+        final matches = response.map((m) => MatchModel.fromJson(m)).toList();
+        return ApiResponse<List<MatchModel>>(success: true, data: matches);
+      }
 
       return ApiResponse<List<MatchModel>>.fromJson(
         response,
@@ -29,7 +35,7 @@ class AudienceService {
 
   Future<dynamic> getAudienceDashboard() async {
     try {
-      return await _apiService.getRequest(ApiConstants.audienceDashboard);
+      return await _apiService.get(ApiConstants.audienceDashboard);
     } catch (e) {
       throw Exception(e.toString());
     }
